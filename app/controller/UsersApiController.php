@@ -3,42 +3,48 @@
     require_once 'app/helper/ApiAuthHelper.php';
     require_once 'app/model/UsersModel.php';
 
-    class UserApiController extends ApiController {
+    class UsersApiController extends ApiController {
         private $model;
-        private $authHelper;
+    private $helper;
 
-        function __construct() {
-            parent::__construct();
-            $this->authHelper = new ApiAuthHelper();
-            $this->model = new UserModel();
+    function __construct(){
+        parent::__construct();
+        $this->model = new UserModel();
+        $this->helper = new ApiAuthHelper();
+    }
+    
+    function obtenerToken($params = []) {
+        $basic = $this->helper->obtenerAuthHeaders();
+
+        if(empty($basic)) {
+            $this->view->response('No envió encabezados de autenticación.', 401);
+            return;
         }
-        
-        function getToken($params = []) {
-            $basic = $this->authHelper->getAuthHeaders(); 
 
-            if(empty($basic)) {
-                $this->view->response('No envió encabezados de autenticación.', 401);
-                return;
-            }
-            $basic = explode(" ", $basic); 
-            if($basic[0]!="Basic") {
-                $this->view->response('Los encabezados de autenticación son incorrectos.', 401);
-                return;
-            }
-            $userpass = base64_decode($basic[1]); 
-            
-            $userpass = explode(":", $userpass);
-            $user = $userpass[0];
-            $pass = $userpass[1];
-            $usuario = $this->model->getUSer($user);
-            $userdata = [$usuario, password_verify($pass, $usuario->password)];
-            
-            if ($usuario && password_verify($pass, $usuario->password)) { 
-                $token = $this->authHelper->createToken($userdata);
-                $this->view->response($token);
-            } else {
-                $this->view->response('El usuario o contraseña son incorrectos.', 401);
-            }
+        $basic = explode(" ", $basic); // quedaria ["Basic", "base64(usr:pass)"]
+
+        if($basic[0]!="Basic") {
+            $this->view->response('Los encabezados de autenticación son incorrectos.', 401);
+            return;
+        }
+
+        $userpass = base64_decode($basic[1]); // usr:pass
+        $userpass = explode(":", $userpass); // ["usr", "pass"]
+
+        $email = $userpass[0];
+        $password = $userpass[1];
+
         
+        $usuario = $this->model->obtenerUsuario($email);
+
+        if($usuario&&password_verify($password,$usuario->contraseña)) {
+            $usuario = [ "nombre" => $usuario->email, "id" => $usuario->id_usuario];
+            $token = $this->helper->crearToken($usuario);
+            $this->view->response($token,200);
+            return;
+        } else {
+            $this->view->response('El usuario o contraseña son incorrectos.', 401);
+            return;
+        }
     }
 }

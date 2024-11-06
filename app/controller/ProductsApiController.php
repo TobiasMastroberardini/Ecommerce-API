@@ -6,152 +6,207 @@
     class ProductsApiController extends ApiController {
         private $model;
         private $authHelper;
+        private $camposProductos;
 
         function __construct() {
             parent::__construct();
             $this->model = new ProductModel();
             $this->authHelper = new ApiAuthHelper();
+            $this->camposProductos = [];
         }
- function get($params = []) {
-            if (empty($params)){
-                $paramsGet=[];
-                if (isset($_GET['nombre_producto'])){
-                    $bodega=$this->model->getProductByNombre($_GET['nombre_producto']);
-                    if($bodega){
-                        $paramsGet['nombre_producto'] = $_GET['nombre_producto'];
+
+        function generarCampos(){
+            $aux = $this->model->getCampos();
+            for($i = 0; $i<count($aux); $i++){
+                array_push($this->camposProductos,$aux[$i]->Field);
+            }
+            return $this->camposProductos;
+        }
+
+        function get($params = []){
+            $this->generarCampos();
+            $ordenes = ['ASC', 'DESC'];
+
+            if(empty($params)){
+                $consultaFinal = "";
+                $parcialCampo = "";
+                $ordenPorParcial = "";
+                $paginadoParcial = "";
+
+                if(isset($_GET['campo']) && isset($_GET['valor'])){
+                    if(in_array($_GET['campo'],$this->camposProductos)){
+                        $campo = $_GET['campo'];
+                        $valor = $_GET['valor'];
+
+                        $parcialCampo = "WHERE $campo = '$valor'";
                     }else{
-                        $this->view->response("El producto ingresado no existe", 404);
+                        $this->view->response("Campo incorrecto. Seleccione un valor del dominio.", 400);
                         return;
                     }
                 }
-                if (isset($_GET['categoria'])){
-                    $cepa=$this->model->getProductsByCategoria($_GET['categoria']);
-                    if($cepa){
-                        $paramsGet['categoria'] = $_GET['categoria'];
-                    }else{
-                        $this->view->response("La categoria ingresada no existe", 404);
-                        return;
-                    }
-                }
-                if (isset ($_GET ['sort'])){
-                    $columnas = $this->model->getColumnName();
-                    $tituloValido=false;
-                    foreach ($columnas as $columna){
-                        if ($_GET ['sort'] == $columna->column_name){
-                            $paramsGet['sort'] = $_GET['sort'];
-                            $tituloValido=true;
+
+                if(isset($_GET['orderPor']) && $_GET['order']){
+                    if(in_array(($_GET['orderPor']), $this->camposProductos)){
+                         $orderPor = $_GET['orderPor'];
+
+                        if(in_array($_GET['order'],$ordenes)){
+                            $orden = $_GET['orden'];
+                        }else{
+                            $this->view->response("Debe seleccionar un orden adecuado", 400);
+                            return;
                         }
-                    }
-                    if ($tituloValido==false){
-                        $this->view->response("El título ingresado no existe", 404);
-                        return;
-                    }
-                }
-                if (isset ($_GET ['order'])){
-                    if ($_GET ['order']=="asc"||$_GET ['order']=="desc"){
-                        $paramsGet['order'] = $_GET['order'];
+
+                        $ordenPorParcial = "ORDER BY $orderPor $orden";
                     }else{
-                        $this->view->response("Criterio de ordenamiento no válido (utilice: asc ó desc)", 404);
+                        $this->view->response("orderPor invalido. Por favor seleccione uno adecuado", 400);
                         return;
                     }
                 }
-                if (isset ($_GET ['page'])){
-                    if (is_numeric($_GET ['page']) && $_GET ['page'] >=1){
-                        $paramsGet['page'] = $_GET['page'];
-                    }else{
-                        $this->view->response("Ingrese un número de página válido", 404);
+
+                if(isset($_GET['pagina'])){
+                    if(is_numeric($_GET['pagina'])){
+                        if($_GET['pagina'] <=0){
+                            $pagina = 1;
+                        }else{
+                            $pagina = $_GET['pagina'];
+                        }
+
+                        if(isset($_GET['limite'])){
+                            $limite = $_GET['limite'];
+                        }else{
+                            $limite = 3;
+                        }
+
+                        $inicio = ((int)$pagina - 1) * ((int)$limite);
+                        $paginadoParcial = "LIMIT $inicio,$limite";
+                }else{
+                    $this->view->response("Pagina invalida. Por favor seleccione un valor numerico". 400);
+                    return;
+                }
+            }
+
+            $consultaFinal = $parcialCampo.$ordenPorParcial.$paginadoParcial;
+
+            if($consultaFinal != ""){
+                $productos = $this->model->getOrdenado($consultaFinal);
+            }else{
+                $productos = $this->model->getProductos();
+            }
+
+            if($productos){
+                $this->view->response($productos,200);
+                return;
+            }else{
+                $this->view->response("No se han encontrado productos". 404);
+                return;
+            }
+
+            }else{
+                if($params[':ID']){
+                    $id = $params[':ID'];
+                    $producto = $this->model->getById($id);
+                    if($producto){
+                        $this->view->response($producto, 200);
+                        return;
+                    }else {
+                        $this->view->response("El producto con id = $id no existe". 404);
                         return;
                     }
-                }
-                $productos = $this->model->getProducts($paramsGet);
-                $this->view->response($productos, 200);
-            } else {
-                $producto = $this->model->getProductById($params[':ID']);
-                if(!empty($producto) && empty($params[':subrecurso'])) {
-                    $this->view->response($producto, 200);
-                }else if(!empty($producto)){
-                    $subrecurso = $params[':subrecurso'];
-                    if (isset($vino->$subrecurso)) {
-                        $this->view->response($producto->$subrecurso, 200);
-                    } else {
-                        $this->view->response("Subrecurso no existe", 404);
-                    }
-                } else {    
-                    $this->view->response('El producto con el id='.$params[':ID'].' no existe.', 404);
+                }else {
+                    $this->view->response("Sintaxis de enpoint invalida". 400);
+                    return;
                 }
             }
         }
 
-        function delete($params = []) {
-            $id = $params[':ID'];
-            $producto = $this->model->getProductById($id);
-            if($producto) {
-                $this->model->deleteProduct($id);
-                $this->view->response('El producto con id='.$id.' ha sido borrado.', 200);
-            } else {
-                $this->view->response('El producto con id='.$id.' no existe.', 404);
-            }
-        }
-
-        function create($params = []) {
-            $user = $this->authHelper->currentUser();
-            if(!$user) {
-                $this->view->response('Unauthorized', 401);
-                return;
-            }
-            $body = $this->getData();
-            $Nombre = $body->Nombre;
-            $Tipo = $body->Tipo;
-            $Azucar = $body->Azucar;
-            $id_bodega = $body->id_bodega;
-            $id_cepa = $body->id_cepa;
-            $bodega=$this->model->getBodegaById($id_bodega);
-            if(!$bodega){
-                $this->view->response('El id_bodega ' .$id_bodega. ' no existe', 404);
-                return;
-            }
-            $cepa=$this->model->getCepaById($id_cepa);
-            if(!$cepa){
-                $this->view->response('El id_cepa ' .$id_cepa. ' no existe', 404);
-                return;
-            }
-            $id = $this->model->insertVino($Nombre, $Tipo, $Azucar, $id_bodega, $id_cepa);
-            $this->view->response('El vino fue insertado con el id='.$id, 201);
-        }
-        function update($params = []) {
-            $user = $this->authHelper->currentUser();
-            if(!$user) {
-                $this->view->response('Unauthorized', 401);
-                return;
-            }
-            $id = $params[':ID'];
-            $vino = $this->model->getVino($id);
-
-            if($vino) {
+        function create(){
+            if($this->authHelper->verificarCliente()){
                 $body = $this->getData();
 
-                $Nombre = $body->Nombre;
-                $Tipo = $body->Tipo;
-                $Azucar = $body->Azucar;
-                $id_bodega = $body->id_bodega;
-                $id_cepa = $body->id_cepa;
+                $id_vendedor = $body->id_vendedor;
+                $id_categoria = $body->id_categoria;
+                $nombre = $body->nombre;
+                $descripcion = $body->descripcion;
+                $precio = $body->precio;
+                $imagen = $body->imagen;
+                $stock = $body->stock;
+                $fecha_creacion = $body->fecha_creacion;
+                $disponible = 1;
 
-                $bodega=$this->model->getBodegaById($id_bodega);
-                if(!$bodega){
-                    $this->view->response('El id_bodega ' .$id_bodega. ' no existe', 404);
-                    return;
-                }
-                $cepa=$this->model->getCepaById($id_cepa);
-                if(!$cepa){
-                    $this->view->response('El id_cepa ' .$id_cepa. ' no existe', 404);
-                    return;
+                if(empty($body->imagen)){
+                    $imagen = null;
                 }
 
-                $this->model->updateVino($Nombre, $Tipo, $Azucar, $id_bodega, $id_cepa, $id);
+                if(empty($id_vendedor)|| empty($id_categoria)|| empty($nombre)||empty($descripcion)||empty($precio)||empty($imagen)||empty($stock) ||empty($fecha_creacion)){
+                    $this->view->response('Por favor complete todo los campos',400);
+                    return;
+                }else{
+                    $productoCreado = $this->model->create($id_vendedor,$id_categoria,$nombre,$descripcion,$precio,$imagen,$stock,$fecha_creacion,$disponible);
 
-                $this->view->response('El vino con id='.$id.' ha sido modificado.', 200);
-            } else {
-                $this->view->response('El vino con id='.$id.' no existe.', 404);
+                    $this->view->response("El producto se creo correctamente con el id $productoCreado", 201);
+                    return;
+                }
+            }else{
+                $this->view->response("Debe entregar un token de Autorizacion",401);
+                return;
+            }
+        }
+
+        function update($params = []){
+            if($this->authHelper->verificarCliente()){
+                $id = $params[':ID'];
+                $producto = $this->model->getById($id);
+
+                if($producto){
+                    $body = $this->getData();
+                    
+                    if(!empty($body->id_vendedor) || !empty($body->id_categoria) || !empty($body->nombre) || !empty($body->descripcion) || !empty($body->precio)||!empty($body->imagen) || !empty($body->stock) || !empty($body->fecha_creacion) || !empty($body->disponible)){
+                        $id_vendedor = $body->id_vendedor;
+                        $id_categoria = $body->id_categoria;
+                        $nombre = $body->nombre;
+                        $descripcion = $body->descripcion;
+                        $precio = $body->precio;
+                        $imagen = $body->imagen;
+                        $stock = $body->stock;
+                        $fecha_creacion = $body->fecha_creacion;
+                        $disponible = $body->disponible;
+
+                        if(empty($body->imagen)){
+                            $imagen = null;
+                        }
+
+                        $prod = $this->model->update($id,$id_vendedor,$id_categoria,$nombre,$descripcion,$precio,$imagen,$stock,$fecha_creacion,$disponible);
+                        $this->view->response("El producto con id = $id ha sido modificado", 200);
+                        return;
+                    }else{
+                        $this->view->response("Error. Faltan completar campos",400);
+                        return;
+                    }
+                }else{
+                    $this->view->response("No existe un producto con el id = $id", 404);
+                }
+            }else{
+                $this->view->response("Debe ingresar el token de Autorizacion", 401);
+                return;
+            }
+        }
+
+        function delete($params = []){
+            if($this->authHelper->verificarCliente()){
+                $id = $params[':ID'];
+                $producto = $this->model->getById($id);
+
+                if($producto){
+                    $this->model->delete($id);
+                    $this->view->response("Producto con id = $id eliminado correctamente", 200);
+                    return;
+                }else{
+                    $this->view->response("El producto con id = $id no existe",404);
+                    return;
+                }
+            }else{
+                $this->view->response("Debe ingresar el token de Autorizacion", 401);
+                return;
             }
         }
     }
