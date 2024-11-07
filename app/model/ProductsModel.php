@@ -5,7 +5,7 @@ require_once 'app/model/ApiModel.php';
 class ProductModel extends Model{
 
     public function getProductos() {
-        $query = $this->db->prepare("SELECT * FROM productos INNER JOIN categorias ON productos.id_categoria = categorias.id_categoria");
+        $query = $this->db->prepare("SELECT productos.*, categorias.nombre AS categoria_nombre FROM productos INNER JOIN categorias ON productos.id_categoria = categorias.id_categoria");
         $query->execute();
         $productos = $query->fetchAll(PDO::FETCH_OBJ);
         return $productos;
@@ -19,14 +19,14 @@ class ProductModel extends Model{
     }
 
     public function getOrdenado($final){
-        $query = $this->db->prepare("SELECT * FROM  productos $final");
+        $query = $this->db->prepare("SELECT productos.*, categorias.nombre AS categoria_nombre FROM productos INNER JOIN categorias ON productos.id_categoria = categorias.id_categoria $final");
         $query->execute();
         $productos = $query->fetchAll(PDO::FETCH_OBJ);
         return $productos;
     }
 
      public function getById($id){
-        $query = $this->db->prepare("SELECT * FROM `productos` WHERE id_producto = ?");
+        $query = $this->db->prepare("SELECT productos.*, categorias.nombre AS categoria_nombre FROM productos INNER JOIN categorias ON productos.id_categoria = categorias.id_categoria WHERE id_producto = ?");
         $query->execute([$id]);
         $producto = $query->fetch(PDO::FETCH_OBJ);
         return $producto;
