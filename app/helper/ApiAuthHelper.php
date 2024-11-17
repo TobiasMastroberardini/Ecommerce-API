@@ -34,9 +34,8 @@ require_once("config.php");
         }
 
         function verificarToken($token) {
-            // $encabezado.$cuerpo.$firma
 
-            $token = explode(".", $token); // [$encabezado, $cuerpo, $firma]
+            $token = explode(".", $token);
             $encabezado = $token[0];
             $cuerpo = $token[1];
             $firma = $token[2];
@@ -54,13 +53,13 @@ require_once("config.php");
         }
 
         function verificarCliente() {
-            $auth = $this->obtenerAuthHeaders(); // "Bearer $token"
-            $auth = explode(" ", $auth); // ["Bearer", "$token"]
+            $auth = $this->obtenerAuthHeaders();
+            $auth = explode(" ", $auth);
 
             if($auth[0] != "Bearer") {
                 return false;
             }
 
-            return $this->verificarToken($auth[1]); // Si está bien nos devuelve el payload
+            return $this->verificarToken($auth[1]);
         }
     }

@@ -49,11 +49,11 @@
                     }
                 }
 
-                if(isset($_GET['orderPor']) && $_GET['order']){
-                    if(in_array(($_GET['orderPor']), $this->camposProductos)){
-                         $orderPor = $_GET['orderPor'];
+                if(isset($_GET['ordenPor']) && $_GET['orden']){
+                    if(in_array(($_GET['ordenPor']), $this->camposProductos)){
+                         $orderPor = $_GET['ordenPor'];
 
-                        if(in_array($_GET['order'],$ordenes)){
+                        if(in_array($_GET['orden'],$ordenes)){
                             $orden = $_GET['orden'];
                         }else{
                             $this->view->response("Debe seleccionar un orden adecuado", 400);
@@ -62,7 +62,7 @@
 
                         $ordenPorParcial = "ORDER BY $orderPor $orden";
                     }else{
-                        $this->view->response("orderPor invalido. Por favor seleccione uno adecuado", 400);
+                        $this->view->response("ordenPor invalido. Por favor seleccione uno adecuado", 400);
                         return;
                     }
                 }
@@ -84,12 +84,12 @@
                         $inicio = ((int)$pagina - 1) * ((int)$limite);
                         $paginadoParcial = "LIMIT $inicio,$limite";
                 }else{
-                    $this->view->response("Pagina invalida. Por favor seleccione un valor numerico". 400);
+                    $this->view->response("Pagina invalida. Por favor seleccione un valor numerico", 400);
                     return;
                 }
             }
 
-            $consultaFinal = $parcialCampo.$ordenPorParcial.$paginadoParcial;
+            $consultaFinal = $parcialCampo. " " .$ordenPorParcial. " " .$paginadoParcial;
 
             if($consultaFinal != ""){
                 $productos = $this->model->getOrdenado($consultaFinal);
@@ -101,7 +101,7 @@
                 $this->view->response($productos,200);
                 return;
             }else{
-                $this->view->response("No se han encontrado productos". 404);
+                $this->view->response("No se han encontrado productos", 404);
                 return;
             }
 
@@ -113,11 +113,11 @@
                         $this->view->response($producto, 200);
                         return;
                     }else {
-                        $this->view->response("El producto con id = $id no existe". 404);
+                        $this->view->response("El producto con id = $id no existe", 404);
                         return;
                     }
                 }else {
-                    $this->view->response("Sintaxis de enpoint invalida". 400);
+                    $this->view->response("Sintaxis de enpoint invalida", 400);
                     return;
                 }
             }

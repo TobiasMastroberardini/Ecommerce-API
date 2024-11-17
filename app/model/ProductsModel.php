@@ -19,7 +19,7 @@ class ProductModel extends Model{
     }
 
     public function getOrdenado($final){
-        $query = $this->db->prepare("SELECT productos.*, categorias.nombre AS categoria_nombre FROM productos INNER JOIN categorias ON productos.id_categoria = categorias.id_categoria $final");
+        $query = $this->db->prepare("SELECT * FROM productos $final");
         $query->execute();
         $productos = $query->fetchAll(PDO::FETCH_OBJ);
         return $productos;

@@ -21,15 +21,15 @@
             return;
         }
 
-        $basic = explode(" ", $basic); // quedaria ["Basic", "base64(usr:pass)"]
+        $basic = explode(" ", $basic);
 
         if($basic[0]!="Basic") {
             $this->view->response('Los encabezados de autenticación son incorrectos.', 401);
             return;
         }
 
-        $userpass = base64_decode($basic[1]); // usr:pass
-        $userpass = explode(":", $userpass); // ["usr", "pass"]
+        $userpass = base64_decode($basic[1]);
+        $userpass = explode(":", $userpass);
 
         $email = $userpass[0];
         $password = $userpass[1];
